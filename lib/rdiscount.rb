@@ -66,6 +66,9 @@ class RDiscount
   # Do not process pseudo-protocols like <tt>[](id:name)</tt>
   attr_accessor :no_pseudo_protocols
 
+  # preseve $...$ math ouside code blocks, for mathjax process
+  attr_accessor :preserve_math
+
   # Create a RDiscount Markdown processor. The +text+ argument
   # should be a string containing Markdown text. Additional arguments may be
   # supplied to set various processing options:
@@ -83,12 +86,31 @@ class RDiscount
   # * <tt>:autolink</tt> - Greedily urlify links.
   # * <tt>:safelink</tt> - Do not make links for unknown URL types.
   # * <tt>:no_pseudo_protocols</tt> - Do not process pseudo-protocols.
+  # * <tt>:preserve_math - escape markdown syntax for $...$ before convert (@text is changed)
   #
   def initialize(text, *extensions)
     @text  = text
     extensions.each { |e| send("#{e}=", true) }
+    do_preserve_math if preserve_math
   end
 
+  private
+
+  def do_preserve_math
+    lines = @text.lines.to_a
+    lines.map! do |line|
+      if line.start_with?('    ')
+        line
+      else
+        line.gsub /$.+?$/ do |s|
+          s = s[1...-1]
+          s.gsub! /[\{\}\[\]\(\)\_\+\-\*\/\`\!\\]/, '\\\1'
+          "$#{s}$"
+        end
+      end
+    end
+    @text = lines.join
+  end
 end
 
 Markdown = RDiscount unless defined? Markdown
