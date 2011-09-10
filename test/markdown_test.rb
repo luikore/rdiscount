@@ -14,13 +14,18 @@ class MarkdownTest < Test::Unit::TestCase
   end
 
   def test_preserve_math
-    markdown = Markdown.new '$\\mathbb{Z}$', :preserve_math
-    assert_equal "<p>$\\mathbb{Z}$</p>\n", markdown.to_html
+    markdown = Markdown.new '$a*b*c [a](b)$ $__a__ `b`$', :preserve_math
+    assert_equal "<p>$a*b*c [a](b)$ $__a__ `b`$</p>\n", markdown.to_html
+  end
+
+  def test_not_preserve_math_for_escaped_dollar
+    markdown = Markdown.new '\\$a*b*c [a](b)\\$ \\$__a__ `b`$', :preserve_math
+    assert_equal "<p>&#36;a<em>b</em>c <a href=\"b\">a</a>&#36; &#36;<strong>a</strong> <code>b</code>$</p>\n", markdown.to_html
   end
 
   def test_not_preserve_math_for_code_block
-    markdown = Markdown.new '    $a^{b}$', :preserve_math
-    assert_equal "<pre><code>$a^{b}$\n</code></pre>\n", markdown.to_html
+    markdown = Markdown.new '    $[a](b)$', :preserve_math
+    assert_equal "<pre><code>$[a](b)$\n</code></pre>\n", markdown.to_html
   end
 
   def test_that_simple_one_liner_goes_to_html

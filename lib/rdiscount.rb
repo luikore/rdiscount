@@ -102,9 +102,13 @@ class RDiscount
       if line.start_with?('    ')
         line
       else
-        line.gsub /$.+?$/ do |s|
+        parts = line.split("\\\\").map do |part|
+          part.gsub("\\$", "&#36;")
+        end
+        parts.join("\\\\").gsub /\$.+?\$/ do |s|
           s = s[1...-1]
-          s.gsub! /[\{\}\[\]\(\)\_\+\-\*\/\`\!\\]/, '\\\1'
+          # no link, bold, italic, code
+          s.gsub! /([\[*_`])/, "\\\\\\1"
           "$#{s}$"
         end
       end
