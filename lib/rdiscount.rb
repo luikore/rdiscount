@@ -108,7 +108,7 @@ class RDiscount
         parts.join("\\\\").gsub /\$.+?\$/ do |s|
           s = s[1...-1]
           # no link, bold, italic, code
-          s.gsub! /([\[*_`])/, "\\\\\\1"
+          s.gsub! /([\[*_`^])/, "\\\\\\1"
           "$#{s}$"
         end
       end
