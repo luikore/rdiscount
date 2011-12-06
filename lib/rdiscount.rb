@@ -66,7 +66,10 @@ class RDiscount
   # Do not process pseudo-protocols like <tt>[](id:name)</tt>
   attr_accessor :no_pseudo_protocols
 
-  # preseve $...$ math ouside code blocks, for mathjax process
+  # preseve $...$ and $$...$$ math ouside code blocks, for mathjax process.
+  # inline-code, block-code and escaping are respected.
+  #
+  # it is a bit flexible with multiline maths when: the first line containing $$ ends with \\
   attr_accessor :preserve_math
 
   # Create a RDiscount Markdown processor. The +text+ argument
@@ -86,7 +89,7 @@ class RDiscount
   # * <tt>:autolink</tt> - Greedily urlify links.
   # * <tt>:safelink</tt> - Do not make links for unknown URL types.
   # * <tt>:no_pseudo_protocols</tt> - Do not process pseudo-protocols.
-  # * <tt>:preserve_math - escape markdown syntax for $...$ before convert (@text is changed)
+  # * <tt>:preserve_math - escape markdown syntax for $...$ or $$...$$ before convert (@text is changed)
   #
   def initialize(text, *extensions)
     @text = text
@@ -105,6 +108,7 @@ class RDiscount
         if !multiline.empty?
           scan_continued_math line
         elsif line.start_with?('    ')
+          # leave block code alone
           line
         else
           scan_normal_line StringScanner.new line
@@ -119,10 +123,11 @@ class RDiscount
       math, rest = line.split '$$', 2
       if rest
         multiline << math
-        r = escape! multiline.join
-        r << '$$' << scan_normal_line(StringScanner.new rest)
+        r = multiline.join
         multiline.clear
-        r
+
+        escape_markdown! r
+        r << '$$' << (scan_normal_line StringScanner.new rest)
       else
         warn "#{lineno}: #{line.rstrip}\n\tAre we in the middle of multiline math? $$ not closed?" if line !~ /\\\\$/
         multiline << line.rstrip
@@ -132,6 +137,10 @@ class RDiscount
 
     def scan_normal_line ss
       r = ''
+      # NOTE rdiscount not doing any escape inside `...` , for example:
+      #   `\`` => <code>\</code>`
+      #   `\\` => <code>\\</code>
+      # so .+? is fine
       while s = (ss.scan(/`.+?`/) or scan_inline_math(ss) or scan_char(ss))
         r << s
       end
@@ -139,21 +148,22 @@ class RDiscount
     end
 
     def scan_inline_math ss
-      if (s = ss.scan /(\$\$?).+?\1/)
-        escape! s
+      # NOTE mathjax respects escapes like \$
+      if (s = ss.scan /(\$\$?)(?:\\[\\\$]|.)+?\1/)
+        escape_markdown! s
+      # it's ok to use .+? because the previous regexp excludes wrapped ones
       elsif (l = ss.scan /\$\$.+?\\\\$/)
         multiline << l
         ss.terminate
+        nil
       end
-      s
     end
 
     def scan_char ss
-      c = ss.scan /\\[\\`$]|./m
-      c == '\$' ? '&#36;' : c
+      ss.scan /\\[\\`$]|./m
     end
 
-    def escape! s
+    def escape_markdown! s
       s.gsub! /([\\\[*_`^])/, "\\\\\\1"
     end
   end
