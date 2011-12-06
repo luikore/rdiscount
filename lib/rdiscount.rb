@@ -89,34 +89,76 @@ class RDiscount
   # * <tt>:preserve_math - escape markdown syntax for $...$ before convert (@text is changed)
   #
   def initialize(text, *extensions)
-    @text  = text
+    @text = text
     extensions.each { |e| send("#{e}=", true) }
-    do_preserve_math if preserve_math
+    @text = Math[@text].preprocess if preserve_math
   end
 
-  private
-
-  def do_preserve_math
-    lines = @text.lines.to_a
-    lines.map! do |line|
-      if line.start_with?('    ')
-        line
-      else
-        parts = line.split("\\\\").map do |part|
-          part.gsub("\\$", "&#36;")
-        end
-        parts.join("\\\\").gsub /\$.+?\$/ do |s|
-          s = s[1...-1]
-          # no link, bold, italic, code
-          s.gsub! /([\[*_`^])/, "\\\\\\1"
-          "$#{s}$"
+  Math = Struct.new :src, :multiline, :lineno
+  class Math
+    def preprocess
+      require 'strscan'
+      self.lineno = 1
+      self.multiline = []
+      lines = src.lines.map do |line|
+        self.lineno = lineno.succ
+        if !multiline.empty?
+          scan_continued_math line
+        elsif line.start_with?('    ')
+          line
+        else
+          scan_normal_line StringScanner.new line
         end
       end
+      multiline.map!{|s| "#{s}\n" }
+      lines += multiline
+      lines.join
     end
-    @text = lines.join
+
+    def scan_continued_math line
+      math, rest = line.split '$$', 2
+      if rest
+        multiline << math
+        r = escape! multiline.join
+        r << '$$' << scan_normal_line(StringScanner.new rest)
+        multiline.clear
+        r
+      else
+        warn "#{lineno}: #{line.rstrip}\n\tAre we in the middle of multiline math? $$ not closed?" if line !~ /\\\\$/
+        multiline << line.rstrip
+        nil
+      end
+    end
+
+    def scan_normal_line ss
+      r = ''
+      while s = (ss.scan(/`.+?`/) or scan_inline_math(ss) or scan_char(ss))
+        r << s
+      end
+      r
+    end
+
+    def scan_inline_math ss
+      if (s = ss.scan /(\$\$?).+?\1/)
+        escape! s
+      elsif (l = ss.scan /\$\$.+?\\\\$/)
+        multiline << l
+        ss.terminate
+      end
+      s
+    end
+
+    def scan_char ss
+      c = ss.scan /\\[\\`$]|./m
+      c == '\$' ? '&#36;' : c
+    end
+
+    def escape! s
+      s.gsub! /([\\\[*_`^])/, "\\\\\\1"
+    end
   end
 end
 
 Markdown = RDiscount unless defined? Markdown
 
-require 'rdiscount.so'
+require (RUBY_PLATFORM =~ /darwin/ ? 'rdiscount.bundle' : 'rdiscount.so')
