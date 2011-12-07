@@ -123,7 +123,7 @@ class RDiscount
       math, rest = line.split '$$', 2
       if rest
         multiline << math
-        r = multiline.join
+        r = multiline.join ' '
         multiline.clear
 
         escape_markdown! r

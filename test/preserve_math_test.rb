@@ -41,7 +41,7 @@ class PreserveMathTest < Test::Unit::TestCase
     src = '$$\begin{align} `x^2` \\\\
     y^2 \\\\
     \end{align}$$'
-    assert_to_html "<p>#{src.gsub "\n", ''}</p>", src
+    assert_to_html "<p>#{src.gsub "\n", ' '}</p>", src
   end
 
   def test_preserve_math_with_unicode
