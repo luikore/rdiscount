@@ -151,6 +151,7 @@ class RDiscount
       # NOTE mathjax respects escapes like \$
       if (s = ss.scan /(\$\$?)(?:\\[\\\$]|.)+?\1/)
         escape_markdown! s
+        s
       # it's ok to use .+? because the previous regexp excludes wrapped ones
       elsif (l = ss.scan /\$\$.+?\\\\$/)
         multiline << l

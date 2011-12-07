@@ -9,6 +9,12 @@ require 'markdown'
 # test all
 class PreserveMathTest < Test::Unit::TestCase
 
+  def test_math_scanner
+    require 'strscan'
+    m = RDiscount::Math.new
+    assert_equal '- $L$', (m.scan_normal_line StringScanner.new '- $L$')
+  end
+
   def test_preserve_math
     # preserve (bold / link / italic / inline code / sup) between $ ... $
     assert_to_html "<p>$a*b*c [a](b)$ $__a__ `b` a^b$</p>",
@@ -25,6 +31,10 @@ class PreserveMathTest < Test::Unit::TestCase
     # NOTE this is not valid latex, just to test $...$ inside $$...$$ should do no harm
     assert_to_html "<p>$$a*b*$*c*$*d$$</p>",
       '$$a*b*$*c*$*d$$'
+
+    # list
+    assert_to_html "<ul>\n<li><p>$L$ $*B*$</p></li>\n<li><p>hi</p></li>\n</ul>",
+      "\n- $L$ $*B*$\n\n- hi"
   end
 
   def test_preserve_multiline_math
